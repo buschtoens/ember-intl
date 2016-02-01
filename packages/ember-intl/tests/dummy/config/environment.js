@@ -13,11 +13,10 @@ module.exports = function(environment) {
     },
 
     intl: {
-      locales: ['en-us', 'es-es', 'fr-fr', 'de-de', 'aa-dj'],
+      locales: ['en-us', 'es-es', 'fr-fr', 'de-de'],
       baseLocale: 'en-us',
       publicOnly: false,
       disablePolyfill: false,
-      allowEmpty: true,
       outputPath: 'translations',
       inputPath: 'tests/dummy/translations'
     }

@@ -36,7 +36,6 @@ function generateOptions(app) {
   var options = utils.assign({
     locales: undefined,
     baseLocale: undefined,
-    allowEmpty: true,
     disablePolyfill: false,
     publicOnly: false,
     inputPath: 'translations',
@@ -66,7 +65,7 @@ module.exports = {
 
     this.opts = generateOptions(app);
     this.hasTranslationDir = existsSync(this.project.root + '/' + this.opts.inputPath);
-    this.locales = this.knownLocales(this.opts);
+    this.locales = this.knownLocales();
 
     this.trees = {
       translations: new WatchedDir(this.opts.inputPath),
@@ -97,9 +96,19 @@ module.exports = {
     return mergeTrees(trees, { overwrite: true });
   },
 
+  outputPaths: function() {
+    var assetPath = 'assets/intl';
+    var appOptions = this.app.options;
+
+    if (appOptions.app && appOptions.app.intl) {
+      assetPath = appOptions.app.intl;
+    }
+
+    return assetPath;
+  },
+
   treeForPublic: function() {
     var publicTree = this._super.treeForPublic.apply(this, arguments);
-
     var trees = [];
 
     if (publicTree) {
@@ -107,12 +116,7 @@ module.exports = {
     }
 
     if (!this.opts.disablePolyfill) {
-      var assetPath = 'assets/intl';
-      var appOptions = this.app.options;
-
-      if (appOptions.app && appOptions.app.intl) {
-        assetPath = appOptions.app.intl;
-      }
+      var assetPath = this.outputPaths();
 
       trees.push(new Funnel(this.trees.intl, {
         srcDir: 'dist',
@@ -147,17 +151,33 @@ module.exports = {
     return mergeTrees(trees, { overwrite: true });
   },
 
-  knownLocales: function(options) {
+  contentFor: function(name) {
+    if (name === 'head' && !this.opts.disablePolyfill) {
+      var assetPath = this.outputPaths();
+      var locales = this.knownLocales();
+
+      var localeScripts = locales.map(function(locale) {
+        return '<script src=\"' + assetPath + '/locales/' + locale + '.js\"></script>';
+      });
+
+      return ['<script src=\"' + assetPath + '/intl.min.js\"></script>']
+        .concat(localeScripts)
+        .join('\n');
+    }
+  },
+
+  knownLocales: function() {
     var locales = [];
 
     if (this.hasTranslationDir) {
-      locales = walkSync(this.project.root + '/' + options.inputPath).map(function(filename) {
-        return path.basename(filename, path.extname(filename));
-      }).filter(utils.isSupportedLocale);
+      locales = walkSync(this.project.root + '/' + this.opts.inputPath)
+        .map(function(filename) {
+          return path.basename(filename, path.extname(filename));
+        }).filter(utils.isSupportedLocale);
     }
 
-    if (options.locales) {
-      locales = locales.concat(options.locales);
+    if (this.opts.locales) {
+      locales = locales.concat(this.opts.locales);
     }
 
     return utils.uniqueByString(locales);
